@@ -11,9 +11,11 @@ from elasticsearch_dsl import Q, Search
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def make_conn(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
+def make_conn(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False, username: str = None, password: str = None):
     """
     hosts: list[str] - list of hostnames, defaults to ['localhost'] if None
+    username: str - elasticsearch username for authentication
+    password: str - elasticsearch password for authentication
     """
     hosts = hosts or ['localhost']
     kwargs = dict(
@@ -21,11 +23,13 @@ def make_conn(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
         port=port,
         use_ssl=use_ssl,
     )
+    if username and password:
+        kwargs['basic_auth'] = (username, password)
     CLIENT = Elasticsearch(**kwargs)
     conn = Search(using=CLIENT, index="geonames")
     return conn
 
-def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
+def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False, username: str = None, password: str = None):
     # Default to localhost if no hosts are provided
     hosts = hosts or ['localhost']
     kwargs = dict(
@@ -33,6 +37,8 @@ def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
         port=port,
         use_ssl=use_ssl,
     )
+    if username and password:
+        kwargs['basic_auth'] = (username, password)
     CLIENT = Elasticsearch(**kwargs)
     try:
         CLIENT.ping()
