@@ -167,7 +167,8 @@ class Geoparser:
                  check_es=True,
                  hosts: list[str] = None,
                  port: int = 9200,
-                 use_ssl: bool = False):
+                 use_ssl: bool = False
+                 ):
         self.debug = debug
         self.trim = trim
         if not nlp:

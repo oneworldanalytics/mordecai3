@@ -11,34 +11,54 @@ from elasticsearch_dsl import Q, Search
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def make_conn(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False, username: str = None, password: str = None):
+import logging
+import os
+
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
+def require_es_password(func):
+    def wrapper(*args, **kwargs):
+        if not os.environ.get("ES_PASSWORD"):
+            raise EnvironmentError("ES_PASSWORD environment variable must be set")
+        return func(*args, **kwargs)
+    return wrapper
+
+@require_es_password
+def make_conn(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
     """
-    hosts: list[str] - list of hostnames, defaults to ['localhost'] if None
-    username: str - elasticsearch username for authentication
-    password: str - elasticsearch password for authentication
+    hosts: list[str] - list of hostnames, defaults to ['localhost'] if None 
     """
     hosts = hosts or ['localhost']
     kwargs = dict(
         hosts=hosts,
         port=port,
         use_ssl=use_ssl,
+        verify_certs=False,
+        ssl_show_warn=False,
+        http_auth=("elastic", os.environ.get("ES_PASSWORD"))
     )
-    if username and password:
-        kwargs['basic_auth'] = (username, password)
+
     CLIENT = Elasticsearch(**kwargs)
     conn = Search(using=CLIENT, index="geonames")
     return conn
 
-def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False, username: str = None, password: str = None):
+@require_es_password
+def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False):
     # Default to localhost if no hosts are provided
     hosts = hosts or ['localhost']
     kwargs = dict(
         hosts=hosts,
         port=port,
         use_ssl=use_ssl,
+        verify_certs=False,
+        ssl_show_warn=False,
+        http_auth=("elastic", os.environ.get("ES_PASSWORD"))
     )
-    if username and password:
-        kwargs['basic_auth'] = (username, password)
+
     CLIENT = Elasticsearch(**kwargs)
     try:
         CLIENT.ping()
@@ -47,6 +67,7 @@ def setup_es(hosts: list[str] = None, port: int = 9200, use_ssl: bool = False, u
         ConnectionError("Could not locate Elasticsearch. Are you sure it's running?")
     conn = Search(using=CLIENT, index="geonames")
     return conn
+
 
 def normalize(ll: list) -> np.array:    
     """Normalize an array to [0, 1]"""
